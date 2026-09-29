@@ -1,0 +1,4 @@
+com.martecyber.plugins.bughunting.ProjectBugHuntingProgramRepository
+com.martecyber.plugins.bughunting.BugHuntingProgramService
+com.martecyber.plugins.bughunting.BugHuntingSyncJobHandler
+com.martecyber.plugins.bughunting.BugHuntingSyncScheduler

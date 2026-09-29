@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+          server-id: github
+
+      # Unlike every other plugin, ares-plugin-bughunting-hackerone/-intigriti compile against
+      # THIS module's own published jar (BugHuntingClient extension point) — so, like ares-sdk/
+      # ares-core, it needs an intermediate package published on every push, not just build+test.
+      - name: Compute intermediate version
+        id: ver
+        run: |
+          set -euo pipefail
+          BASE="$(grep -m1 -oP '^\s*<revision>\K[^<]+' pom.xml)"
+          echo "version=${BASE}+${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build, test, and publish intermediate package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B -ntp "-Drevision=${{ steps.ver.outputs.version }}" deploy

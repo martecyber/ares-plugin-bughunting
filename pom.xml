@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.martecyber.plugins</groupId>
+    <artifactId>ares-plugin-bughunting</artifactId>
+    <!-- CI-friendly ${revision} (not a plain literal like every other plugin) — unlike those,
+         ares-plugin-bughunting-hackerone/-intigriti compile against THIS module's own published
+         jar (see the description above), so it needs the same intermediate/release GitHub
+         Packages publish mechanism as ares-sdk/ares-core, not just a marketplace jar upload. -->
+    <version>${revision}</version>
+    <packaging>jar</packaging>
+    <name>Ares ASM plugin — Bug Hunting programs</name>
+    <description>
+        Base plugin for Bug Hunting project types: the BH project type, the per-project programme
+        (platform, linked integration, sync schedule) entity/API, scope-sync job plumbing, and the
+        BugHuntingClient extension point platform-specific plugins (ares-plugin-bughunting-hackerone,
+        ares-plugin-bughunting-intigriti) implement. Also ships Bugcrowd/YesWeHack clients directly
+        (their APIs are company-facing rather than researcher-facing, so they don't warrant their own
+        plugin the way HackerOne/Intigriti do). See ares-plugin-fortirecon/pom.xml for why plugins
+        live outside ares-core.
+    </description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-boot.version>3.5.7</spring-boot.version>
+        <!-- Must match the version actually published to ares-sdk's own GitHub Packages. -->
+        <ares-sdk.version>1.0.0</ares-sdk.version>
+        <revision>1.0.1-beta1</revision>
+    </properties>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>Maven Packages</name>
+            <url>https://maven.pkg.github.com/martecyber/ares-plugin-bughunting</url>
+        </repository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/martecyber/ares-sdk</url>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- The plugin SDK's own extension-point interfaces/DTOs — provided, not
+             compile: resolved at runtime from ares-core's own classpath (which depends
+             on ares-sdk itself), same as the ares-core dependency above. -->
+        <dependency>
+            <groupId>com.martecyber.ares</groupId>
+            <artifactId>ares-sdk</artifactId>
+            <version>${ares-sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- @PostConstruct (BugcrowdClient/YesWeHackClient self-registration) — genuinely runs on
+             a plugin-loaded bean, unlike @Component/@Transactional/@PreAuthorize: PluginLoader's
+             beanFactory.createBean(Class) fully initializes the bean (BeanPostProcessors included),
+             it just never CGLIB-proxies the class itself. -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Real tests (mock-based) — see ares-plugin-caido/pom.xml's identical dependency for why
+             spring-boot-starter-test (not raw junit-jupiter/mockito) and why logging is excluded. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+            </plugin>
+            <!-- Pinned: needed for `mvn install` (ares-plugin-bughunting-hackerone/-intigriti each
+                 have a compile-time dependency on this plugin's own jar, for BugHuntingClient) —
+                 see ares-sdk/pom.xml's identical pin for the full rationale. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.4</version>
+            </plugin>
+            <!-- Resolves the ${revision} CI-friendly property into a real <version> in the POM
+                 that actually gets deployed — otherwise consumers resolving this from GitHub
+                 Packages would see a literal unresolved "${revision}" in the POM. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
